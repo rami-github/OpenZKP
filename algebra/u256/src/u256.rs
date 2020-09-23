@@ -1,8 +1,18 @@
+// False positive: attribute has a use
+#[allow(clippy::useless_attribute)]
+// False positive: Importing preludes is allowed
+#[allow(clippy::wildcard_imports)]
+use std::prelude::v1::*;
+
 #[cfg(any(test, feature = "proptest"))]
 use proptest_derive::Arbitrary;
-use std::{cmp::Ordering, prelude::v1::*, u64};
+use std::{cmp::Ordering, u64};
+
+#[cfg(feature = "parity_codec")]
+use parity_scale_codec::{Decode, Encode};
 
 #[derive(PartialEq, Eq, Clone, Default, Hash)]
+#[cfg_attr(feature = "parity_codec", derive(Encode, Decode))]
 // TODO: Generate a quasi-random sequence.
 // See http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
 #[cfg_attr(any(test, feature = "proptest"), derive(Arbitrary))]

@@ -1,9 +1,13 @@
+// False positive: attribute has a use
+#[allow(clippy::useless_attribute)]
+// False positive: Importing preludes is allowed
+#[allow(clippy::wildcard_imports)]
+use std::{fmt, prelude::v1::*};
+
 use crate::U256;
-use hex;
-use std::prelude::v1::*;
 
 #[cfg(feature = "std")]
-use std::{fmt, format};
+use std::format;
 
 impl U256 {
     pub fn from_decimal_str(s: &str) -> Result<Self, ParseError> {
@@ -96,7 +100,6 @@ impl fmt::Display for U256 {
     }
 }
 
-#[cfg(feature = "std")]
 impl fmt::Debug for U256 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -151,7 +154,7 @@ mod tests {
     proptest!(
         #[test]
         fn test_decimal_to_from(n: U256) {
-            let decimal = n.clone().to_decimal_string();
+            let decimal = n.to_decimal_string();
             let m = U256::from_decimal_str(&decimal).unwrap();
             prop_assert_eq!(n, m)
         }

@@ -1,6 +1,12 @@
+// False positive: attribute has a use
+#[allow(clippy::useless_attribute)]
+// False positive: Importing preludes is allowed
+#[allow(clippy::wildcard_imports)]
+use std::prelude::v1::*;
+
 use crate::U256;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{prelude::v1::*, u64};
+use std::u64;
 
 impl U256 {
     pub fn from_bytes_be(n: &[u8; 32]) -> Self {
@@ -159,10 +165,11 @@ impl U256 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bincode;
     use num_traits::identities::One;
     use proptest::prelude::*;
-    use serde_json;
+
+    #[cfg(feature = "parity_codec")]
+    use parity_scale_codec::{Decode, Encode};
 
     #[test]
     fn test_one() {
@@ -187,9 +194,47 @@ mod tests {
     fn test_serde_bincode() {
         proptest!(|(x: U256)| {
             let serialized = bincode::serialize(&x)?;
-            dbg!(&serialized, serialized.len());
             let deserialized: U256 = bincode::deserialize(&serialized)?;
             prop_assert_eq!(deserialized, x);
+        });
+    }
+
+    #[cfg(feature = "parity_codec")]
+    #[test]
+    fn test_parity_codec_one() {
+        let one = U256::one();
+        let serialized = one.encode();
+        assert_eq!(
+            hex::encode(serialized),
+            "0100000000000000000000000000000000000000000000000000000000000000"
+        );
+    }
+
+    #[cfg(feature = "parity_codec")]
+    #[test]
+    fn test_parity_codec() {
+        proptest!(|(x: U256)| {
+            let serialized = x.encode();
+            // Deserialize consumes a mutable slice reference.
+            let mut slice = serialized.as_slice();
+            let deserialized: U256 = U256::decode(&mut slice)?;
+            prop_assert_eq!(slice.len(), 0); // Consumes all
+            prop_assert_eq!(deserialized, x);
+        });
+    }
+
+    #[cfg(feature = "parity_codec")]
+    #[test]
+    fn test_parity_little_endian() {
+        proptest!(|(x: U256)| {
+            let serialized = x.encode();
+            // Encoding is lsb first (little-endian order)
+            // We prefer big-endian in IO, but the actual memory layout is
+            // little-endian. Having the encoding be identical to the memory
+            // layout may give a performance advantage down the line, which
+            // seems to be the goal of the Parity Scale codec.
+            let little_endian: Vec<u8> = x.to_bytes_be().iter().rev().cloned().collect();
+            prop_assert_eq!(serialized, little_endian);
         });
     }
 }
